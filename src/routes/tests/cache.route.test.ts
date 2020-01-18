@@ -14,6 +14,8 @@ jest.mock('../../lib/cache.class', () => {
     })
 })
 
+jest.mock('../../models/cache.model')
+
 describe('~/routes/cache.route.ts', () => {
   test('[GET] /cache/keys returns all stored keys in the cache', async () => {
     const response = await request(app).get('/cache/keys')
