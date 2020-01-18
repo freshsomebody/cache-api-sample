@@ -1,3 +1,5 @@
+import faker from 'faker'
+
 interface CacheStore {
   [key: string]: {
     value: any,
@@ -36,11 +38,14 @@ export default class Cache {
     if (!this.store[key]) {
       // Cache miss
       // => Call miss handler
+      this.missHandler(key)
     } else {
       // Cache hit
       console.log('Cache hit')
       // => Reset TTL timer
+      this.store[key].ttlTimer = this.setTTLTimer(key)
       // => Update the last update time
+      this.store[key].lastUpdateAt = this.setLastUpdateAt()
     }
     return this.store[key].value
   }
@@ -60,10 +65,50 @@ export default class Cache {
   set (key: string, value: any) {
     // Check whether cache exceeds the max amount of entries
     // IF exceed
-    // => remove one item
+    if (
+      !this.store[key] && // Not just replacement
+      this.maxEntries !== 0 && // maxEntries is enabled
+      Object.keys(this.store).length >= this.maxEntries // item amount reaches the limit
+    ) {
+      // => Delete one item
+      /**
+       * **Approach explanation**
+       * Each item of a cache has a property, lastUpdatedAt, which is a postive integer.
+       * Everytime a item is created, updated or retrieved, lastUpdatedAt will be updated
+       *  to the current unix timestamp by new Date().getTime().
+       * The cached item with the smallest lastUpdatedAt will be replaced by the new item.
+       * Using unix timestamp is because numbers are much easier to compare than strings.
+       */
+      let oldestCacheKey: string = ''
+      let oldestLastUpdateAt = Number.MAX_SAFE_INTEGER
 
-    // Reset TTL timer
+      // Find the key of the least active cache
+      Object.keys(this.store).forEach(key => {
+        const lastUpdateAt = this.store[key].lastUpdateAt
+        if (lastUpdateAt < oldestLastUpdateAt) {
+          oldestCacheKey = key
+          oldestLastUpdateAt = lastUpdateAt
+        }
+      })
+
+      // Delete the cache item
+      this.del(oldestCacheKey)
+    }
+
     // Set cache data of the given key
+    this.store[key] = {
+      value,
+      ttlTimer: this.setTTLTimer(key),
+      lastUpdateAt: this.setLastUpdateAt()
+    }
+  }
+
+  /**
+   * Set last updated time
+   * @returns unix timestamp: number
+   */
+  setLastUpdateAt (): number {
+    return new Date().getTime()
   }
 
   /**
@@ -71,8 +116,22 @@ export default class Cache {
    * @param key Cache key
    */
   del (key: string) {
+    if (!this.store[key]) {
+      return
+    }
+
     // Clear ttl timer
+    this.store[key].ttlTimer = this.setTTLTimer(key, true)
     // Delete the cache item
+    delete this.store[key]
+    console.log(`${key} is deleted`)
+  }
+
+  delAll () {
+    Object.keys(this.store).forEach(key => {
+      this.del(key)
+    })
+    this.store = {}
   }
 
   /**
@@ -82,12 +141,34 @@ export default class Cache {
   missHandler (key: string) {
     console.log('Cache miss')
     // Set cache data with a random string
+    this.set(key, this.generateRandomString())
   }
 
   /**
    * Generate a random string
    */
   generateRandomString (): string {
-    return 'randomString'
+    return faker.name.findName()
+  }
+
+  /**
+   * Reset the TTL timer of the given key
+   * @param key Cache key
+   * @param clearOnly Whether clears a timer and doesn't reset it, default false
+   */
+  setTTLTimer (key: string, clearOnly: boolean = false): null | NodeJS.Timeout {
+    // If ttlTime is set => clear it
+    if (this.store[key] && this.store[key].ttlTimer) {
+      clearTimeout(this.store[key].ttlTimer)
+    }
+
+    if (clearOnly || this.ttl === 0) {
+      return null
+    }
+
+    // Else set a new timeout
+    return setTimeout(() => {
+      this.set(key, this.generateRandomString())
+    }, this.ttl)
   }
 }
