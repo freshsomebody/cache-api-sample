@@ -42,6 +42,11 @@ You can create a .env file at the root of this project to customize some variabl
 
 ```
 SERVICE_PORT=3000 // service port of endpoints
+
+DATABASE_HOST=localhost
+DATABASE_PORT=27017
+DATABASE=cache // database to be used
+
 MAX_ENTRIES=2 // Max amount of entries allowed in a cache
 TTL=20000 // Time To Live(TTL) of each cached item (in millisecond)
 ```
@@ -77,4 +82,4 @@ All api endpoints are:
 - [x] Overwrite when cache exceed the max amount of entries
     - Explanation is written in the **set** method in ~/lib/cache.class.ts
 - [x] Add TTL and reset mechanisms for caches
-- [ ] Store a copy in MongoDB
+- [x] Store a copy in MongoDB
