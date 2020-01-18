@@ -49,14 +49,20 @@ TTL=20000 // Time To Live(TTL) of each cached item (in millisecond)
 ## Endpoints
 All api endpoints are:
 - Return the cached data for a given key
+    - [GET] [http://localhost:3000/cache/data?key=GIVEN_KEY](http://localhost:3000/cache/data?key=test)
 - Returns all stored keys in the cache
+    - [GET] [http://localhost:3000/cache/keys](http://localhost:3000/cache/keys)
 - Create/ Update the data for a give ken
+    - [POST] [http://localhost:3000/cache](http://localhost:3000/cache)
+    - Post body: { key: string, value: any }
 - Remove a given key from the cache
+    - [DELETE] [http://localhost:3000/cache?key=GIVEN_KEY](http://localhost:3000/cache?key=GIVEN_KEY)
 - Remove all keys from the cache
+    - [DELETE] [http://localhost:3000/cache](http://localhost:3000/cache)
 
 ## Development checkpoints
 ### Minimal requirements
-- [ ] Add an endpoint that returns the cached data for a given key
+- [x] Add an endpoint that returns the cached data for a given key
     - Cache miss
         - [x] Log 'Cache miss'
         - [x] Update the cache with a random string
@@ -64,10 +70,10 @@ All api endpoints are:
     - Cache hit
         - [x] Log 'Cache hit'
         - [x] Get and return the data
-- [ ] Add an endpoint that returns all stored keys in the cache
-- [ ] Add an endpoint that creates/ updates the data for a given key
-- [ ] Add an endpoint that removes a given key from the cache
-- [ ] Add an endpoint that removes all keys from the cache
+- [x] Add an endpoint that returns all stored keys in the cache
+- [x] Add an endpoint that creates/ updates the data for a given key
+- [x] Add an endpoint that removes a given key from the cache
+- [x] Add an endpoint that removes all keys from the cache
 - [x] Overwrite when cache exceed the max amount of entries
     - Explanation is written in the **set** method in ~/lib/cache.class.ts
 - [x] Add TTL and reset mechanisms for caches
