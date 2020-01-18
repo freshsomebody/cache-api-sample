@@ -1,6 +1,7 @@
 import express from 'express'
 import Cache from '../lib/cache.class'
 import { CacheDoc } from '../types/cache.type'
+import * as CacheModel from '../models/cache.model'
 import dotenv from 'dotenv'
 dotenv.config()
 
@@ -28,7 +29,7 @@ router.get('/keys', (req, res) => {
  * Get the cache data for a given key
  * Endpoint: [GET] /cache/data?key=CACHEKEY
  */
-router.get('/data', (req, res) => {
+router.get('/data', async (req, res) => {
   try {
     const cacheKey = req.query.key
     if (!cacheKey) {
@@ -37,6 +38,7 @@ router.get('/data', (req, res) => {
     }
 
     const cacheData = cache.get(cacheKey)
+    await CacheModel.findOneAndUpdate({ key: cacheKey, value: cacheData })
     res.status(200).send(cacheData)
   } catch (error) {
     res.status(500).send(error)
@@ -48,7 +50,7 @@ router.get('/data', (req, res) => {
  * Endpoint: [POST] /cache
  * Expected req.body: { key: string, value: any }
  */
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   const newCacheData: CacheDoc = req.body
   if (!newCacheData.key || !newCacheData.value) {
     res.status(400).send('Missing cache key or value')
@@ -57,6 +59,7 @@ router.post('/', (req, res) => {
   try {
     const { key, value } = newCacheData
     cache.set(key, value)
+    await CacheModel.findOneAndUpdate({ key, value })
     res.status(200).send(`Cache key - ${key} - has been added`)
   } catch (error) {
     res.status(500).send(error)
@@ -67,16 +70,18 @@ router.post('/', (req, res) => {
  * Delete all or the given key from the cache
  * Endpoint: [DELETE] /cache[?key=CACHEKEY]
  */
-router.delete('/', (req, res) => {
+router.delete('/', async (req, res) => {
   try {
     const cacheKey = req.query.key
     // If a key is given => delete the key
     if (cacheKey) {
-      cache.del(req.params.key)
-      res.status(200).send(`Cache key - ${req.params.key} - has been deleted`)
+      cache.del(cacheKey)
+      await CacheModel.removeByKey(cacheKey)
+      res.status(200).send(`Cache key - ${cacheKey} - has been deleted`)
     } else {
       // Else => delete all keys
       cache.delAll()
+      await CacheModel.removeByKey()
       res.status(200).send('All data are deleted')
     }
   } catch (error) {
