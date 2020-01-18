@@ -1,0 +1,11 @@
+{
+  "name": "cache-api",
+  "version": "0.0.0",
+  "description": "Cache api",
+  "main": "dist/server.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "author": "Sam Liu",
+  "license": "ISC"
+}
