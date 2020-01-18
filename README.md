@@ -56,18 +56,19 @@ All api endpoints are:
 
 ## Development checkpoints
 ### Minimal requirements
-- Add an endpoint that returns the cached data for a given key
+- [ ] Add an endpoint that returns the cached data for a given key
     - Cache miss
-        - [ ] Log 'Cache miss'
-        - [ ] Update the cache with a random string
-        - [ ] Return the random string
+        - [x] Log 'Cache miss'
+        - [x] Update the cache with a random string
+        - [x] Return the random string
     - Cache hit
-        - [ ] Log 'Cache hit'
-        - [ ] Get and return the data
+        - [x] Log 'Cache hit'
+        - [x] Get and return the data
 - [ ] Add an endpoint that returns all stored keys in the cache
 - [ ] Add an endpoint that creates/ updates the data for a given key
 - [ ] Add an endpoint that removes a given key from the cache
 - [ ] Add an endpoint that removes all keys from the cache
-- [ ] Overwrite when cache exceed the max amount of entries
-- [ ] Add TTL and reset mechanisms for caches
+- [x] Overwrite when cache exceed the max amount of entries
+    - Explanation is written in the **set** method in ~/lib/cache.class.ts
+- [x] Add TTL and reset mechanisms for caches
 - [ ] Store a copy in MongoDB
