@@ -81,8 +81,8 @@ All api endpoints are:
 - [x] Add an endpoint that removes all keys from the cache
 - [x] Overwrite when cache exceed the max amount of entries
     - Explanation is written in the **set** method in ~/lib/cache.class.ts
-- [ ] Add TTL and reset mechanisms for caches
-    - [ ] Change TTL check timing to get/ set
+- [x] Add TTL and reset mechanisms for caches
+    - [x] Change TTL check timing to get/ set
 - [ ] Add cache strategies [#reference](https://developers.google.com/web/ilt/pwa/caching-files-with-service-worker)
 - [ ] Integrate models with caches
 - [x] Store a copy in MongoDB
