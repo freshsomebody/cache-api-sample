@@ -15,19 +15,19 @@ describe('~/lib/cache.class.ts', () => {
     let testCache = new Cache()
     expect(testCache.store).toMatchObject({})
     expect(testCache.maxEntries).toBe(0)
-    expect(testCache.ttl).toBe(0)
+    expect(testCache.ttlSeconds).toBe(0)
 
     // Invalid parameters
     testCache = new Cache(-1, -1)
     expect(testCache.store).toMatchObject({})
     expect(testCache.maxEntries).toBe(0)
-    expect(testCache.ttl).toBe(0)
+    expect(testCache.ttlSeconds).toBe(0)
 
     // Valid parameters
     testCache = new Cache(2, 100)
     expect(testCache.store).toMatchObject({})
     expect(testCache.maxEntries).toBe(2)
-    expect(testCache.ttl).toBe(100)
+    expect(testCache.ttlSeconds).toBe(100)
   })
 
   test('Cache.get method logs "Cache miss" when a key is not found', () => {
@@ -80,11 +80,13 @@ describe('~/lib/cache.class.ts', () => {
     expect(Object.keys(testCache.store)).toEqual(['k1', 'k3'])
   })
 
-  test('Cache reset the data with a random string if a key TTL is expired', () => {
-    const testCache = new Cache(0, 100)
+  test('Cache delete the entry if a key TTL is expired', () => {
+    const testCache = new Cache(0, 10)
     testCache.set('k1', 'v1')
-    jest.runOnlyPendingTimers()
-    expect(testCache.store.k1.value).toBe(randomString)
+    // Add a little delay
+    setTimeout(() => {}, 100)
+    jest.runAllTimers()
+    expect(testCache.store).toMatchObject({})
   })
 
   test('Cache.del deletes the given key', () => {
