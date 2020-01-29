@@ -84,5 +84,5 @@ All api endpoints are:
 - [x] Add TTL and reset mechanisms for caches
     - [x] Change TTL check timing to get/ set
 - [x] Add cache strategies [#reference](https://developers.google.com/web/tools/workbox/modules/workbox-strategies)
-- [ ] Integrate models with caches
+- [x] Add exampe of integrating models with caches
 - [x] Store a copy in MongoDB
