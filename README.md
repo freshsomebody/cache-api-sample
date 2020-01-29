@@ -83,6 +83,6 @@ All api endpoints are:
     - Explanation is written in the **set** method in ~/lib/cache.class.ts
 - [x] Add TTL and reset mechanisms for caches
     - [x] Change TTL check timing to get/ set
-- [ ] Add cache strategies [#reference](https://developers.google.com/web/tools/workbox/modules/workbox-strategies)
+- [x] Add cache strategies [#reference](https://developers.google.com/web/tools/workbox/modules/workbox-strategies)
 - [ ] Integrate models with caches
 - [x] Store a copy in MongoDB
