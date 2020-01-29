@@ -1,4 +1,5 @@
 import faker from 'faker'
+import { CacheGetOptions, CacheStrategies } from '../types/cache.type'
 
 interface CacheStore {
   [key: string]: {
@@ -31,21 +32,119 @@ export default class Cache {
   /**
    * Get the cache data of the given key
    * @param key Cache key
+   * @param fetchFunction Function to fetch data from network
+   * @param overrideOptions Options to override the default cache options
    * @returns CacheData: any = Cache data of the given key
    */
-  get (key: string): any {
-    const minTimestamp = Date.now() - this.ttlSeconds * 1000
-    if (!this.store[key] || this.store[key].lastUpdateAt < minTimestamp) {
-      // Cache miss
-      // => Call miss handler
-      this.missHandler(key)
-    } else {
-      // Cache hit
-      console.log('Cache hit')
-      // => Update the last update time
-      this.store[key].lastUpdateAt = this.setLastUpdateAt()
+  async get (key: string, fetchFunction?: Function, overrideOptions: CacheGetOptions = {}) {
+    const defaultOptions: CacheGetOptions = {
+      strategy: CacheStrategies.CacheFirst
     }
-    return this.store[key].value
+    const options = { ...defaultOptions, ...overrideOptions }
+
+    switch (options.strategy) {
+      case CacheStrategies.CacheFirst:
+        return this.CacheFirst(key, fetchFunction)
+      case CacheStrategies.NetworkFirst:
+        return this.NetworkFirst(key, fetchFunction)
+      case CacheStrategies.CacheOnly:
+        return this.CacheOnly(key)
+      case CacheStrategies.NetworkOnly:
+        return this.NetworkOnly(fetchFunction)
+      case CacheStrategies.StaleWhileRevalidate:
+        return this.StaleWhileRevalidate(key, fetchFunction)
+      default:
+        return this.CacheFirst(key, fetchFunction)
+    }
+  }
+
+  /**
+   * @see https://developers.google.com/web/tools/workbox/modules/workbox-strategies#cache_first_cache_falling_back_to_network
+   * @param key Cache key
+   * @param fetchFunction Function to fetch data from network
+   */
+  async CacheFirst (key: string, fetchFunction: Function) {
+    // Try to return the data from cache first
+    if (this.isCacheHit(key)) {
+      // If cache hit
+      // => return data from cache
+      return this.store[key].value
+    } else {
+      // If cache miss
+      // => Fetch data from network
+      // => Set cache and return data
+      const data = await fetchFunction()
+      this.set(key, data)
+      return data
+    }
+  }
+
+  /**
+   * @see https://developers.google.com/web/tools/workbox/modules/workbox-strategies#network_first_network_falling_back_to_cache
+   * @param key Cache key
+   * @param fetchFunction Function to fetch data from network
+   */
+  async NetworkFirst (key: string, fetchFunction: Function) {
+    try {
+      // Try to fetch data from network first
+      const data = await fetchFunction()
+      // If fetch successfully
+      // => set cache and return data
+      this.set(key, data)
+      return data
+    } catch (error) {
+      // Fail to fetch data from network
+      if (this.isCacheHit(key)) {
+        // If cache hit
+        // => return data from cache
+        return this.store[key].value
+      }
+      // If cache miss => throw error
+      throw error
+    }
+  }
+
+  /**
+   * @see https://developers.google.com/web/tools/workbox/modules/workbox-strategies#cache_only
+   * @param key Cache key
+   */
+  async CacheOnly (key: string) {
+    if (this.isCacheHit(key)) {
+      return this.store[key].value
+    }
+    throw new Error('404')
+  }
+
+  /**
+   * @see https://developers.google.com/web/tools/workbox/modules/workbox-strategies#network_only
+   * @param fetchFunction Function to fetch data from network
+   */
+  async NetworkOnly (fetchFunction: Function) {
+    return fetchFunction()
+  }
+
+  /**
+   * @see https://developers.google.com/web/tools/workbox/modules/workbox-strategies#stale-while-revalidate
+   * @param key Cache key
+   * @param fetchFunction Function to fetch data from network
+   */
+  async StaleWhileRevalidate (key: string, fetchFunction: Function) {
+    if (this.isCacheHit(key)) {
+      // If cahce hit
+      // => Don't await for cache updated from network data
+      fetchFunction().then(data => {
+        this.set(key, data)
+      })
+      // => Return data from cache immediately
+      return this.store[key].value
+    } else {
+      // If cache miss
+      // => Await for cache updated from network data
+      const data = await fetchFunction()
+      this.set(key, data)
+      // => Return data
+      return data
+    }
   }
 
   /**
@@ -112,14 +211,13 @@ export default class Cache {
    * Delete expired and stale cache entries
    */
   deleteExpiredAndStaleEntries () {
-    const minTimestamp = Date.now() - this.ttlSeconds * 1000
     let oldestCacheKey: string = ''
     let oldestLastUpdateAt = Number.MAX_SAFE_INTEGER
 
     Object.keys(this.store).forEach(key => {
       const { lastUpdateAt } = this.store[key]
       // Delete the cache if ttlSeconds is set and the cache is expried
-      if (this.ttlSeconds > 0 && lastUpdateAt < minTimestamp) {
+      if (this.isExpired(key)) {
         this.del(key)
         return
       }
@@ -142,13 +240,26 @@ export default class Cache {
   }
 
   /**
-   * Handle cache miss event
+   * Check whether it is a cache hit for the given key
    * @param key Cache key
+   * @returns true = cache hit, false = cache miss
    */
-  missHandler (key: string) {
-    console.log('Cache miss')
-    // Set cache data with a random string
-    this.set(key, this.generateRandomString())
+  isCacheHit (key: string): boolean {
+    if (this.store[key] && !this.isExpired(key)) {
+      this.store[key].lastUpdateAt = this.setLastUpdateAt()
+      return true
+    }
+    return false
+  }
+
+  /**
+   * Check whether an entry is expired
+   * @param key Cache key
+   * @returns true = expired, false = not expired
+   */
+  isExpired (key: string): boolean {
+    const minTimestamp = Date.now() - this.ttlSeconds * 1000
+    return (this.ttlSeconds > 0 ? this.store[key].lastUpdateAt < minTimestamp : false)
   }
 
   /**
