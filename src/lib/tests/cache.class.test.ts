@@ -1,5 +1,6 @@
 import Cache from '../cache.class'
 import faker from 'faker'
+import { CacheGetOptions, CacheStrategies } from '../../types/cache.type'
 
 jest.useFakeTimers()
 
@@ -30,33 +31,113 @@ describe('~/lib/cache.class.ts', () => {
     expect(testCache.ttlSeconds).toBe(100)
   })
 
-  test('Cache.get method logs "Cache miss" when a key is not found', () => {
-    const log = jest.spyOn(global.console, 'log')
-    const testCache = new Cache()
-    testCache.get('key')
-    expect(log).toHaveBeenCalledWith('Cache miss')
+  test('Strategy CacheFirst returns correctly', async () => {
+    const valueFromCache = 'valueFromCache'
+    const valueFromNetwork = 'valueFromNetwork'
+    const fetchFunction = () => Promise.resolve(valueFromNetwork)
+    const cacheGetOption: CacheGetOptions = { strategy: CacheStrategies.CacheFirst }
+
+    // Cache hit => return from cache
+    let testCache = new Cache()
+    testCache.set('key', valueFromCache)
+    let getResult = await testCache.get('key', fetchFunction, cacheGetOption)
+    expect(getResult).toBe(valueFromCache)
+
+    // Cache miss => return from network
+    testCache = new Cache()
+    getResult = await testCache.get('key', fetchFunction, cacheGetOption)
+    expect(getResult).toBe(valueFromNetwork)
+    expect(testCache.store.key.value).toBe(valueFromNetwork)
   })
 
-  test('Cache.get method assigns and returns a random string when a key is not found', () => {
-    const testCache = new Cache()
-    const getResult = testCache.get('key')
-    expect(testCache.store.key.value).toBe(randomString)
-    expect(getResult).toBe(randomString)
+  test('Strategy NetworkFirst returns correctly', async () => {
+    const valueFromCache = 'valueFromCache'
+    const valueFromNetwork = 'valueFromNetwork'
+    let fetchFunction = () => Promise.resolve(valueFromNetwork)
+    const cacheGetOption: CacheGetOptions = { strategy: CacheStrategies.NetworkFirst }
+
+    // Network is okay => return from network
+    let testCache = new Cache()
+    let getResult = await testCache.get('key', fetchFunction, cacheGetOption)
+    expect(getResult).toBe(valueFromNetwork)
+    expect(testCache.store.key.value).toBe(valueFromNetwork)
+
+    // Network is failed => return from cache
+    fetchFunction = () => Promise.reject(new Error('404'))
+    testCache = new Cache()
+    testCache.set('key', valueFromCache)
+    getResult = await testCache.get('key', fetchFunction, cacheGetOption)
+    expect(getResult).toBe(valueFromCache)
+
+    // Network and cache are both failed
+    // => Throw error
+    fetchFunction = () => Promise.reject(new Error('404'))
+    testCache = new Cache()
+    expect(testCache.get('key', fetchFunction, cacheGetOption)).rejects.toEqual(new Error('404'))
   })
 
-  test('Cache.get method logs "Cache hit" when a key is found', () => {
-    const log = jest.spyOn(global.console, 'log')
-    const testCache = new Cache()
-    testCache.set('key', 'value')
-    testCache.get('key')
-    expect(log).toHaveBeenCalledWith('Cache hit')
+  test('Strategy CacheOnly returns correctly', async () => {
+    const valueFromCache = 'valueFromCache'
+    const valueFromNetwork = 'valueFromNetwork'
+    const fetchFunction = () => Promise.resolve(valueFromNetwork)
+    const cacheGetOption: CacheGetOptions = { strategy: CacheStrategies.CacheOnly }
+
+    // Cache hit => return from cache
+    let testCache = new Cache()
+    testCache.set('key', valueFromCache)
+    const getResult = await testCache.get('key', fetchFunction, cacheGetOption)
+    expect(getResult).toBe(valueFromCache)
+
+    // Cache miss => throw error
+    let error
+    testCache = new Cache()
+    try {
+      await testCache.get('key', fetchFunction, cacheGetOption)
+    } catch (e) {
+      error = e
+    }
+    expect(error).toBeDefined()
   })
 
-  test('Cache.get method returns the data when a key is found', () => {
-    const testCache = new Cache()
-    testCache.set('key', 'value')
-    const getResult = testCache.get('key')
-    expect(getResult).toBe('value')
+  test('Strategy NetworkOnly returns correctly', async () => {
+    const valueFromNetwork = 'valueFromNetwork'
+    let fetchFunction = () => Promise.resolve(valueFromNetwork)
+    const cacheGetOption: CacheGetOptions = { strategy: CacheStrategies.NetworkOnly }
+
+    // Network is okay => return from network
+    let testCache = new Cache()
+    const getResult = await testCache.get('key', fetchFunction, cacheGetOption)
+    expect(getResult).toBe(valueFromNetwork)
+
+    // Network is failed => throw error
+    fetchFunction = () => Promise.reject(new Error('500'))
+    testCache = new Cache()
+    expect(testCache.get('key', fetchFunction, cacheGetOption)).rejects.toEqual(new Error('500'))
+  })
+
+  test('Strategy StaleWhileRevalidate returns correctly', async () => {
+    const valueFromCache = 'valueFromCache'
+    const valueFromNetwork = 'valueFromNetwork'
+    const fetchFunction = async () => valueFromNetwork
+    const cacheGetOption: CacheGetOptions = { strategy: CacheStrategies.StaleWhileRevalidate }
+
+    // Cache hit
+    // => Return from cache
+    // => Update cache with data from network
+    let testCache = new Cache()
+    testCache.set('key', valueFromCache)
+    expect(testCache.store.key.value).toBe(valueFromCache)
+    let getResult = await testCache.get('key', fetchFunction, cacheGetOption)
+    expect(getResult).toBe(valueFromCache)
+    expect(testCache.store.key.value).toBe(valueFromNetwork)
+
+    // Cache miss
+    // => Update cache with data from network
+    // => Return from data from network
+    testCache = new Cache()
+    getResult = await testCache.get('key', fetchFunction, cacheGetOption)
+    expect(getResult).toBe(valueFromNetwork)
+    expect(testCache.store.key.value).toBe(valueFromNetwork)
   })
 
   test('Cache.set method adds a new key with value into cache', () => {
